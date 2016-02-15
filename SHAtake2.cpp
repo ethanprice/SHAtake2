@@ -1,6 +1,6 @@
 /*
 SHAtake2 is an implementation of the SHA256 hashing standard. 
-It's moderately fast under GCC, at least -O1 optimization is recommended.
+At least -O1 and -flto optimization are recommended.
 C++11 features are used, and using the -std=c++11 flag is likely required to compile.	
 */
 
@@ -10,39 +10,8 @@ C++11 features are used, and using the -std=c++11 flag is likely required to com
 #include <fstream>
 #include <string>
 #include <chrono>
+#include "SHA256functions.h"
 
-uint32_t rotateLeft(uint32_t x, uint32_t i) {
-    return (x<<i) | (x>>(-i&31));;
-}
-
-uint32_t rotateRight(uint32_t x, uint32_t i) {
-    return (x>>i) | (x<<(-i&31));
-}
-
-//SHA256 functions
-uint32_t ch(uint32_t x, uint32_t y, uint32_t z) {
-    return (x&y)^(~x&z);
-}
-
-uint32_t maj(uint32_t x, uint32_t y, uint32_t z) {
-    return (x&y)^(x&z)^(y&z);
-}
-
-uint32_t upperSigmaZero256(uint32_t x) {
-    return rotateRight(x, 2) ^ rotateRight(x, 13) ^ rotateRight(x, 22);
-}
-
-uint32_t upperSigmaOne256(uint32_t x) {
-    return rotateRight(x, 6) ^ rotateRight(x, 11) ^ rotateRight(x, 25);
-}
-
-uint32_t lowerSigmaZero256(uint32_t x) {
-    return rotateRight(x, 7) ^ rotateRight(x, 18) ^ (x >> 3);
-}
-
-uint32_t lowerSigmaOne256(uint32_t x) {
-    return rotateRight(x, 17) ^ rotateRight(x, 19) ^ (x >> 10);
-}
 
 std::array<unsigned char, 4> intToBytes(uint32_t x) {
     std::array<unsigned char, 4> bytes;
@@ -83,7 +52,7 @@ std::array<uint32_t, 8>& processingSHA256(std::vector<char>& messageBuffer, std:
 		}
 		//fill the rest of w with sigma functions
 		for (int t=16; t<64; t++) {
-			w[t] = lowerSigmaOne256(w[t-2]) + w[t-7] + lowerSigmaZero256(w[t-15]) + w[t-16];
+			w[t] = SHA256functions::lowerSigmaOne(w[t-2]) + w[t-7] + SHA256functions::lowerSigmaZero(w[t-15]) + w[t-16];
 		}
 
 		//initialize working variables
@@ -96,8 +65,8 @@ std::array<uint32_t, 8>& processingSHA256(std::vector<char>& messageBuffer, std:
 		g = hashValue[6];
 		h = hashValue[7];
 		for (int t=0; t<64; t++) {
-			t1 = h + upperSigmaOne256(e) + ch(e,f,g) + k[t] + w[t];
-			t2 = upperSigmaZero256(a) + maj(a,b,c);
+			t1 = h + SHA256functions::upperSigmaOne(e) + SHA256functions::ch(e,f,g) + k[t] + w[t];
+			t2 = SHA256functions::upperSigmaZero(a) + SHA256functions::maj(a,b,c);
 			h=g;
 			g=f;
 			f=e;
