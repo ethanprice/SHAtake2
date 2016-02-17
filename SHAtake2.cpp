@@ -13,12 +13,16 @@ C++11 features are used, and using the -std=c++11 flag is likely required to com
 #include "SHA256functions.h"
 
 
-std::array<unsigned char, 4> intToBytes(uint32_t x) {
-    std::array<unsigned char, 4> bytes;
-    bytes[0] = (x >> 24) & 0xFF;
-    bytes[1] = (x >> 16) & 0xFF;
-    bytes[2] = (x >> 8) & 0xFF;
-    bytes[3] = x & 0xFF;
+std::array<unsigned char, 8> uint64ToBigEndianBytes(uint64_t x) {
+    std::array<unsigned char, 8> bytes;
+	bytes[0] = (x >> 56) & 0xFF;
+	bytes[1] = (x >> 48) & 0xFF;
+	bytes[2] = (x >> 40) & 0xFF;
+	bytes[3] = (x >> 32) & 0xFF;
+	bytes[4] = (x >> 24) & 0xFF;
+    bytes[5] = (x >> 16) & 0xFF;
+    bytes[6] = (x >> 8) & 0xFF;
+    bytes[7] = x & 0xFF;
     return bytes;
 }
 
@@ -121,9 +125,9 @@ int main(int argc, char* argv[]) {
 
     //append length diff
     ifile.seekg (0, ifile.end);
-    uint32_t ifileSize = ifile.tellg();
+    uint64_t ifileSize = ifile.tellg();
     ifile.seekg (0, ifile.beg);
-    uint32_t numPaddingBytes = (56 - ifileSize%64)%64;
+    uint32_t numPaddingBytes = (56 - ifileSize%64)%64-1;
     if (numPaddingBytes == 0) {
         numPaddingBytes = 64;
     }
@@ -132,11 +136,8 @@ int main(int argc, char* argv[]) {
     }
 
     //append filesize
-    std::array<unsigned char, 4> ifileSizeBytes = intToBytes((ifileSize*8));
-    for(uint32_t x=0; x<3; x++) {
-        messageTail.push_back(0x0);
-    }
-    for(uint32_t x=0; x<4; x++) {
+    std::array<unsigned char, 8> ifileSizeBytes = uint64ToBigEndianBytes((ifileSize*8));
+    for(uint32_t x=0; x<8; x++) {
         messageTail.push_back(ifileSizeBytes[x]);
     }
 
