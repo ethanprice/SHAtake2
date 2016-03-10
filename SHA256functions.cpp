@@ -17,14 +17,14 @@ std::array<uint32_t, 64> generateSHA256_K() {
 	return K;
 }
 
-std::array<uint32_t, 64> generateSHA256_H0() {
-	static const std::array<uint32_t, 64> H0 = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+std::array<uint32_t, 8> generateSHA256_H0() {
+	static const std::array<uint32_t, 8> H0 = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
     0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
 	return H0;
 }
  
- std::array<uint32_t, 64> generateSHA224_H0() {
-	static const std::array<uint32_t, 64> H0 = {0xc1059ed8, 0x367cd507, 0x3070dd17, 0xf70e5939,
+ std::array<uint32_t, 8> generateSHA224_H0() {
+	static const std::array<uint32_t, 8> H0 = {0xc1059ed8, 0x367cd507, 0x3070dd17, 0xf70e5939,
 	0xffc00b31, 0x68581511, 0x64f98fa7, 0xbefa4fa4};
 	return H0;
 }

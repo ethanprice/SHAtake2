@@ -5,75 +5,32 @@ C++11 features are used, and using the -std=c++11 flag is likely required to com
 */
 
 #include <iostream>
+#include <sstream>
 #include <vector>
 #include <array>
 #include <fstream>
 #include <string>
 #include <chrono>
+#include <iomanip>
 #include "SHA256functions.h"
 #include "SHA256computation.h"
 
-
-std::array<unsigned char, 8> uint64ToBigEndianBytes(uint64_t x) {
-    std::array<unsigned char, 8> bytes;
-	bytes[0] = (x >> 56) & 0xFF;
-	bytes[1] = (x >> 48) & 0xFF;
-	bytes[2] = (x >> 40) & 0xFF;
-	bytes[3] = (x >> 32) & 0xFF;
-	bytes[4] = (x >> 24) & 0xFF;
-    bytes[5] = (x >> 16) & 0xFF;
-    bytes[6] = (x >> 8) & 0xFF;
-    bytes[7] = x & 0xFF;
-    return bytes;
-}
-
-int main(int argc, char* argv[]) {
+inline std::vector<uint32_t> createSHAofFile(std::istream& ifile, std::string SHAmode){
 	const uint32_t CHUNK_SIZE = 1024;
+	std::array<uint32_t, 8> hashValue;
+	std::vector<unsigned char> messageTail;
 	
-    if(argc<2) {
-        std::cout << "Please enter the file name as an argument.\n";
-        return 1;
-    }
-
-    //start timer
-    auto timer1 = std::chrono::high_resolution_clock::now();
-
-    //initialize hash with SHA constants
-    std::array<uint32_t, 8> hashValue = SHA256functions::generateSHA256_H0();  
-
-    //open file
-    std::ifstream ifile (argv[1], std::ifstream::binary);
-    if(!ifile) {
-        std::cout << "File not found.\n";
-        return 1;
-    }
-
-    // preprocess (create tail to append):
-    std::vector<unsigned char> messageTail;
-
-    //append '1' bit
-    messageTail.push_back(0x80);
-
-    //append length diff
-    ifile.seekg (0, ifile.end);
-    uint64_t ifileSize = ifile.tellg();
-    ifile.seekg (0, ifile.beg);
-    uint32_t numPaddingBytes = (56 - ifileSize%64)%64-1;
-    if (numPaddingBytes == 0) {
-        numPaddingBytes = 64;
-    }
-    for(uint32_t x=0; x<numPaddingBytes; x++) {
-        messageTail.push_back(0x0);
-    }
-
-    //append filesize
-    std::array<unsigned char, 8> ifileSizeBytes = uint64ToBigEndianBytes((ifileSize*8));
-    for(uint32_t x=0; x<8; x++) {
-        messageTail.push_back(ifileSizeBytes[x]);
-    }
-
-
-    //create buffer, and process the file in chunks (multiplied by 64 to ensure a full SHA round completes
+	//initialize
+	if (SHAmode == "SHA224"){
+		hashValue = SHA256functions::generateSHA224_H0();
+		messageTail = SHA256computation::createSHA256MessageTail(ifile);
+	}else{
+		hashValue = SHA256functions::generateSHA256_H0();
+		messageTail = SHA256computation::createSHA256MessageTail(ifile);
+	}
+	
+	//FILE MODE
+	//create buffer, and process the file in chunks (multiplied by 64 to ensure a full SHA round completes
     std::vector<char> messageBuffer(CHUNK_SIZE*64);
 	while(ifile.read(messageBuffer.data(), messageBuffer.size())) {
 		hashValue = SHA256computation::computeSHA256(messageBuffer, hashValue);
@@ -86,19 +43,72 @@ int main(int argc, char* argv[]) {
 		messageBuffer.push_back(i);
 	}
 	hashValue = SHA256computation::computeSHA256(messageBuffer, hashValue);
+	std::vector<uint32_t> hashVector;
+	for (auto value : hashValue){
+		hashVector.push_back(value);
+	}
 	
+	return hashVector;
+}
+
+int main(int argc, char* argv[]) {
+	std::ios::sync_with_stdio(false);
+	std::string SHAmode = "";
+	bool timed = false;
+	//normally read from CIN
+	std::string filename = "";
 	
-    std::cout << "Final hash value: ";
-    for (int t=0; t<8; t++) {
-        std::cout << std::hex << hashValue[t] << " ";
-    }
-    std::cout << "\n";
-    ifile.close();
+	//start timer
+    auto timer1 = std::chrono::high_resolution_clock::now();
 	
-    //stop timer
-    auto timer2 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> runtime = timer2 - timer1;
-    float throughput = (ifileSize/1000)/runtime.count();
-    std::cout << "Throughput: " << throughput << " MB/s";
+    for (int i = 1; i < argc; i++){
+		std::string arg = argv[i];
+		if (arg == "-SHA224"){
+			SHAmode = "SHA224";
+		}
+		else if (arg == "-SHA256"){
+			SHAmode = "SHA256";
+		}
+		else if (arg == "-t"){
+			timed = true;
+		}
+		else{
+			filename = arg;
+		}
+	}
+	
+	if (SHAmode == ""){
+		std::cout << "No SHA version flag detected, defaulting to SHA256" << "\n";
+		SHAmode = "SHA256";
+	}
+	
+	std::vector<uint32_t> hashVector;
+	
+	//if file was redirected in, use that, else open file
+	if (filename == ""){
+		hashVector = createSHAofFile(std::cin, SHAmode);
+		if (!std::cin.eof()){
+			std::cout << "No input detected.";
+			return 1;
+		}
+	} else {
+		std::ifstream message(filename);
+		if(!message) {
+			std::cout << "File " << filename << " not found.\n";
+			return 1;
+		}
+		hashVector = createSHAofFile(message, SHAmode);
+	}
+	
+	for (auto x : hashVector){
+		std::cout << std::hex << x;
+	}
+	
+	if (timed){
+		auto timer2 = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> runtime = timer2 - timer1;
+		std::cout << std::fixed << std::setprecision(3) << "\nThroughput: " << runtime.count() << " seconds";
+	}
+	
     return 0;
 }

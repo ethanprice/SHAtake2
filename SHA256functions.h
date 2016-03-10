@@ -3,7 +3,7 @@
 
 std::array<uint32_t, 64> generateSHA256_K();
 
-std::array<uint32_t, 64> generateSHA224_H0()
+std::array<uint32_t, 8> generateSHA224_H0();
 std::array<uint32_t, 8> generateSHA256_H0(); 
 
 uint32_t rotateLeft(uint32_t x, uint32_t i);
